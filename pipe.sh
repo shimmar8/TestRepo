@@ -1,1 +1,1 @@
-echo "Deploying from DEV to PROD..."
+echo "Deploying from Prod to Dev..."
