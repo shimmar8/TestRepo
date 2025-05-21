@@ -1,8 +1,0 @@
-name: "Sample Flow"
-type: "inboundcall"
-defaultLanguage: "en-us"
-startUpRef: "/tasks/startTask"
-tasks:
- - name: "startTask"
-   ref: "/tasks/startTask"
-   actions: []
