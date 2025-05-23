@@ -1,162 +1,58 @@
 pipeline {
 
-    agent any
-
     parameters {
-
-        choice(name: 'DIRECTION', choices: ['dev-to-prod', 'prod-to-dev'], description: 'Select direction')
-
-    }
-
+        booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
+    } 
     environment {
-
-        REPO = 'https://github.com/your-org/your-repo.git'
-
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     }
 
+   agent  any
     stages {
-
-        stage('Checkout') {
-
+        stage('checkout') {
             steps {
-
-                script {
-
-                    def branch = params.DIRECTION == 'dev-to-prod' ? 'dev' : 'prod'
-
-                    git branch: branch, url: "${env.REPO}"
-
+                 script{
+                        dir("terraform")
+                        {
+                            git "https://github.com/shimmar8/TestRepo.git"
+                        }
+                    }
                 }
-
             }
 
-        }
-
-        // ========== PROD to DEV ==========
-
-        stage('Export from Prod to Local') {
-
-            when {
-
-                expression { params.DIRECTION == 'prod-to-dev' }
-
-            }
-
+        stage('Plan') {
             steps {
-
                 sh '''
-
-                    echo "Exporting resources from PROD..."
-
-                    chmod +x scripts/export_from_prod.sh
-
-                    ./scripts/export_from_prod.sh
-
+                pwd;
+                cd terraform/ ; 
+                terraform init
+                terraform plan -out tfplan
+                terraform show -no-color tfplan > tfplan.txt
                 '''
-
             }
-
         }
+        stage('Approval') {
+           when {
+               not {
+                   equals expected: true, actual: params.autoApprove
+               }
+           }
 
-        stage('Push Export to Dev Branch') {
+           steps {
+               script {
+                    def plan = readFile 'terraform/tfplan.txt'
+                    input message: "Do you want to apply the plan?",
+                    parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
+               }
+           }
+       }
 
-            when {
-
-                expression { params.DIRECTION == 'prod-to-dev' }
-
-            }
-
+        stage('Apply') {
             steps {
-
-                sh '''
-
-                    echo "Committing export to dev branch"
-
-                    git checkout dev
-
-                    git add .
-
-                    git config user.name "CI BOT"
-
-                    git config user.email "ci@example.com"
-
-                    git commit -m "Synced PROD to DEV"
-
-                    git push origin dev
-
-                '''
-
+                sh "pwd;cd terraform/ ; terraform apply -input=false tfplan"
             }
-
         }
-
-        // ========== DEV to PROD ==========
-
-        stage('Terraform Init (Dev to Prod)') {
-
-            when {
-
-                expression { params.DIRECTION == 'dev-to-prod' }
-
-            }
-
-            steps {
-
-                sh 'terraform init -backend-config=prod-backend.hcl'
-
-            }
-
-        }
-
-        stage('Terraform Plan (Dev to Prod)') {
-
-            when {
-
-                expression { params.DIRECTION == 'dev-to-prod' }
-
-            }
-
-            steps {
-
-                sh 'terraform plan -var="environment=prod"'
-
-            }
-
-        }
-
-        stage('Approval (Dev to Prod)') {
-
-            when {
-
-                expression { params.DIRECTION == 'dev-to-prod' }
-
-            }
-
-            steps {
-
-                input message: 'Approve deployment to PROD?'
-
-            }
-
-        }
-
-        stage('Terraform Apply (Dev to Prod)') {
-
-            when {
-
-                expression { params.DIRECTION == 'dev-to-prod' }
-
-            }
-
-            steps {
-
-                sh 'terraform apply -auto-approve -var="environment=prod"'
-
-            }
-
-        }
-
     }
 
-}
- 
+  }
