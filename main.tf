@@ -1,9 +1,9 @@
 provider "aws" {
  region     = var.aws_region
- access_key = "AKIAZ7SALFO4SYQ2J6H"
- secret_key = "pXaAGbixOcqBXkb3sHi/rzon5lDeDDqc+w4m9Qd"
+ access_key = var.aws_access_key
+ secret_key = var.aws_secret_key
 }
-resource "aws_s3_bucket" "my_bucket" {
+resource "aws_s3_bucket" "S3newbuck" {
  bucket = var.bucket_name
  acl    = "private"
 }
