@@ -1,11 +1,11 @@
 pipeline {
  agent any
  environment {
-   AWS_ACCESS_KEY_ID     = credentials('AKIAZ7SALFO4U6JXMFZ')     
-   AWS_SECRET_ACCESS_KEY = credentials('1ZvUG6UGKQskb1kU3gOjy9yUeex+DXg757vCdWm')     
+   AWS_ACCESS_KEY_ID     = credentials('AKIdAZ7SALFO4SYQ2JR6H')     
+   AWS_SECRET_ACCESS_KEY = credentials('pXaAGbixOcqBXkdb3sHi/rzon5lDeDDrqc+w4m9Qd')
  }
  stages {
-   stage('Clone Repo') {
+   stage('Checkout') {
      steps {
        git "https://github.com/shimmar8/TestRepo.git"
      }
@@ -15,21 +15,28 @@ pipeline {
        sh 'terraform init'
      }
    }
+   stage('Terraform Validate') {
+     steps {
+       sh 'terraform validate'
+     }
+   }
    stage('Terraform Plan') {
      steps {
-       sh 'terraform plan -var="aws_access_key=$AWS_ACCESS_KEY_ID" -var="aws_secret_key=$AWS_SECRET_ACCESS_KEY"'
+       sh 'terraform plan -var-file="terraform.tfvars"'
      }
    }
    stage('Terraform Apply') {
      steps {
-       input message: "Approve to apply?"
-       sh 'terraform apply -auto-approve -var="aws_access_key=$AWS_ACCESS_KEY_ID" -var="aws_secret_key=$AWS_SECRET_ACCESS_KEY"'
+       sh 'terraform apply -auto-approve -var-file="terraform.tfvars"'
      }
    }
  }
  post {
-   always {
-     echo 'Pipeline completed.'
+   failure {
+     echo "Pipeline failed."
+   }
+   success {
+     echo "S3 bucket created successfully."
    }
  }
 }
